@@ -1,4 +1,8 @@
 <resources>
     <string name="app_name">Void.</string>
     <string name="main_message">Void.</string>
+    <string name="shortcut_short">You did it!</string>
+    <string name="shortcut_long">You did it!</string>
+    <string name="secret_message">Ops! This had to be a secret.</string>
+    <string name="app_id">323607037261</string>
 </resources>
