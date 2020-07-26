@@ -41,7 +41,9 @@ class CheckCode {
             return Actions.SCALE_UP;
         }else if(this.current_guess.equalsIgnoreCase((Actions.RETURN_NORMAL.getString()))){
             return Actions.RETURN_NORMAL;
-        } else{
+        } else if(this.current_guess.equalsIgnoreCase((Actions.SHOW_ACHIEVEMENTS.getString()))){
+            return Actions.SHOW_ACHIEVEMENTS;
+        } else {
             return Actions.NOT_VALID;
         }
     }

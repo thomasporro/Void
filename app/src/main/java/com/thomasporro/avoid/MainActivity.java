@@ -26,6 +26,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignInClient;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.gms.auth.api.signin.GoogleSignInResult;
 import com.google.android.gms.games.Games;
+import com.google.android.gms.games.GamesClient;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 
@@ -140,9 +141,12 @@ public class MainActivity extends AppCompatActivity {
         String digit = (String) view.getTag();
         checkCode.addDigit(digit);
         counter++;
-        total_click +=1 ;
+        total_click +=1;
 
-        if(total_click == 6){showAchievements();
+        Games.getAchievementsClient(this, mGoogleSignInAccount).increment(getString(R.string.incremental), 1);
+
+        if(total_click == 6){
+            //showAchievements();
             Games.getAchievementsClient(this, mGoogleSignInAccount).unlock(getString(R.string.at_least_you_tried));
 
         }
@@ -173,6 +177,10 @@ public class MainActivity extends AppCompatActivity {
                     message.animate().scaleX(1);
                     scaledUp = false;
                     scaledDown = false;
+                    break;
+
+                case SHOW_ACHIEVEMENTS:
+                    showAchievements();
                     break;
             }
             vibration.vibrate(VIBRATION);
@@ -274,6 +282,8 @@ public class MainActivity extends AppCompatActivity {
                 // The signed in account is stored in the result.
                 Log.d(TAG, "Successfully connected with Google Play Services");
                 mGoogleSignInAccount = result.getSignInAccount();
+                GamesClient gamesClient = Games.getGamesClient(this, mGoogleSignInAccount);
+                gamesClient.setViewForPopups(findViewById(android.R.id.content));
             } else {
                 Log.e(TAG, "Not connected with Google Play Services");
                 String message = result.getStatus().getStatusMessage();
