@@ -45,7 +45,6 @@ public class MainActivity extends AppCompatActivity {
     private Toast beforeExit;
     private SharedPreferences sharedPreferences;
     private CheckCode checkCode;
-    private GoogleSignInClient mGoogleSignInClient;
     private GoogleSignInAccount mGoogleSignInAccount;
     private final int RC_SIGN_IN = 1;
 
@@ -88,7 +87,10 @@ public class MainActivity extends AppCompatActivity {
         }
         scaleMessage(scaledUp, scaledDown);
 
-        signIn();
+        if(mGoogleSignInAccount == null){
+            signIn();
+            Log.d(TAG, "Performed normal login");
+        }
     }
 
 
@@ -143,12 +145,15 @@ public class MainActivity extends AppCompatActivity {
         counter++;
         total_click +=1;
 
-        Games.getAchievementsClient(this, mGoogleSignInAccount).increment(getString(R.string.incremental), 1);
+        if(mGoogleSignInAccount != null){
+            Games.getAchievementsClient(this, mGoogleSignInAccount).increment(getString(R.string.incremental), 1);
+        }
+
 
         if(total_click == 6){
-            //showAchievements();
-            Games.getAchievementsClient(this, mGoogleSignInAccount).unlock(getString(R.string.at_least_you_tried));
-
+            if(mGoogleSignInAccount != null){
+                Games.getAchievementsClient(this, mGoogleSignInAccount).unlock(getString(R.string.at_least_you_tried));
+            }
         }
         
         if(counter == 6) {
@@ -156,6 +161,10 @@ public class MainActivity extends AppCompatActivity {
             switch (guessed){
                 case CHANGE_COLOR:
                     changeBackground(!backgroundChanged);
+                    if(mGoogleSignInAccount != null){
+                        Games.getAchievementsClient(this, mGoogleSignInAccount)
+                                .unlock(getString(R.string.blackout));
+                    }
                     break;
 
                 case SCALE_DOWN:
@@ -163,9 +172,17 @@ public class MainActivity extends AppCompatActivity {
                     message.animate().scaleX(0.5f);
                     scaledUp = false;
                     scaledDown = true;
+                    if(mGoogleSignInAccount != null){
+                        Games.getAchievementsClient(this, mGoogleSignInAccount)
+                                .unlock(getString(R.string.small_pp));
+                    }
                     break;
 
                 case SCALE_UP:
+                    if(mGoogleSignInAccount != null){
+                        Games.getAchievementsClient(this, mGoogleSignInAccount)
+                                .unlock(getString(R.string.its_bigger));
+                    }
                     message.animate().scaleY(2);
                     message.animate().scaleX(2);
                     scaledUp = true;
@@ -173,6 +190,10 @@ public class MainActivity extends AppCompatActivity {
                     break;
 
                 case RETURN_NORMAL:
+                    if(mGoogleSignInAccount != null && (scaledDown || scaledUp)){
+                        Games.getAchievementsClient(this, mGoogleSignInAccount)
+                                .unlock(getString(R.string.normality));
+                    }
                     message.animate().scaleY(1);
                     message.animate().scaleX(1);
                     scaledUp = false;
@@ -180,7 +201,9 @@ public class MainActivity extends AppCompatActivity {
                     break;
 
                 case SHOW_ACHIEVEMENTS:
-                    showAchievements();
+                    if(mGoogleSignInAccount != null){
+                        showAchievements();
+                    }
                     break;
             }
             vibration.vibrate(VIBRATION);
@@ -264,7 +287,7 @@ public class MainActivity extends AppCompatActivity {
      * Performs the sign in into a google account
      */
     void signIn(){
-        mGoogleSignInClient = GoogleSignIn.getClient(this, GoogleSignInOptions.DEFAULT_GAMES_SIGN_IN);
+        GoogleSignInClient mGoogleSignInClient = GoogleSignIn.getClient(this, GoogleSignInOptions.DEFAULT_GAMES_SIGN_IN);
 
         //Performs the login into the google account
         Intent signInIntent = mGoogleSignInClient.getSignInIntent();

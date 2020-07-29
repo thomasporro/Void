@@ -3,7 +3,7 @@ apply plugin: 'com.android.application'
 android {
     signingConfigs {
         debug {
-            storeFile file('/Users/thomasporro/Desktop/Void/app_key.jks')
+            storeFile file('C:\\Users\\thoma\\Documents\\Void_documentation\\app_key.jks')
             storePassword 'nonmifreghipi1'
             keyAlias 'key0'
             keyPassword 'nonmifreghipi1'
