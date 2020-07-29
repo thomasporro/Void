@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Void.</string>
+    <string name="main_message">Void</string>
+    <string name="secret_message">Ops! This had to be a secret!</string>
+    <string name="shortcut_short">Yes! You did it!</string>
+    <string name="shortcut_long">Yes! You did it!</string>
+</resources>

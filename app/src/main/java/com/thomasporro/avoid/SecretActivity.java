@@ -9,19 +9,35 @@ import android.graphics.Color;
 import android.graphics.drawable.TransitionDrawable;
 import android.os.Bundle;
 import android.os.Vibrator;
+import android.util.Log;
 import android.view.View;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.google.android.gms.auth.api.Auth;
+import com.google.android.gms.auth.api.signin.GoogleSignIn;
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
+import com.google.android.gms.auth.api.signin.GoogleSignInClient;
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
+import com.google.android.gms.auth.api.signin.GoogleSignInResult;
+import com.google.android.gms.games.Games;
+import com.google.android.gms.games.GamesClient;
+import com.google.android.gms.tasks.Task;
+
 public class SecretActivity extends AppCompatActivity {
+
+    final String TAG = "SecretActivity";
 
     private int counter = 0;
     private RelativeLayout relativeLayout;
     private TextView message;
-    private final String CHANGE_COLOR = "abcdef";
+    private final String CHANGE_COLOR = "change_color";
+    private final int RC_SIGN_IN = 1;
+    private GoogleSignInAccount mGoogleSignInAccount;
 
 
     @Override
@@ -35,7 +51,8 @@ public class SecretActivity extends AppCompatActivity {
         SharedPreferences sharedPreferences = getSharedPreferences("VOID", MODE_PRIVATE);
         boolean backgroundChanged = sharedPreferences.getBoolean(CHANGE_COLOR, false);
         changeBackground(backgroundChanged);
-        //TODO unlock the achievemetn
+        signIn();
+
     }
 
     public void onClick(View view){
@@ -84,5 +101,43 @@ public class SecretActivity extends AppCompatActivity {
                         // Hide the nav bar and status bar
                         | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
                         | View.SYSTEM_UI_FLAG_FULLSCREEN);
+    }
+
+    /**
+     * Performs the sign in into a google account
+     */
+    void signIn(){
+        GoogleSignInClient mGoogleSignInClient = GoogleSignIn.getClient(this, GoogleSignInOptions.DEFAULT_GAMES_SIGN_IN);
+
+        //Performs the login into the google account
+        Intent signInIntent = mGoogleSignInClient.getSignInIntent();
+        startActivityForResult(signInIntent, RC_SIGN_IN);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if(requestCode == RC_SIGN_IN){
+            Task<GoogleSignInAccount> task =
+                    GoogleSignIn.getSignedInAccountFromIntent(data);
+            GoogleSignInResult result = Auth.GoogleSignInApi.getSignInResultFromIntent(data);
+            if (result.isSuccess()) {
+                // The signed in account is stored in the result.
+                Log.d(TAG, "Successfully connected with Google Play Services");
+                mGoogleSignInAccount = result.getSignInAccount();
+                GamesClient gamesClient = Games.getGamesClient(this, mGoogleSignInAccount);
+                gamesClient.setViewForPopups(findViewById(android.R.id.content));
+                Games.getAchievementsClient(this, mGoogleSignInAccount)
+                        .unlock(getString(R.string.you_did_it));
+            } else {
+                Log.e(TAG, "Not connected with Google Play Services");
+                String message = result.getStatus().getStatusMessage();
+                if (message == null || message.isEmpty()) {
+                    message = "hai sbagliato";
+                }
+                new AlertDialog.Builder(this).setMessage(message)
+                        .setNeutralButton(android.R.string.ok, null).show();
+            }
+        }
     }
 }

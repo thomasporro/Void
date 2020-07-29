@@ -1,19 +1,34 @@
 package com.thomasporro.avoid;
 
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.animation.ArgbEvaluator;
 import android.animation.ValueAnimator;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.drawable.TransitionDrawable;
 import android.os.Bundle;
 import android.os.Vibrator;
+import android.util.Log;
 import android.view.View;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.google.android.gms.auth.api.Auth;
+import com.google.android.gms.auth.api.signin.GoogleSignIn;
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
+import com.google.android.gms.auth.api.signin.GoogleSignInClient;
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
+import com.google.android.gms.auth.api.signin.GoogleSignInResult;
+import com.google.android.gms.games.Games;
+import com.google.android.gms.games.GamesClient;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -30,6 +45,10 @@ public class MainActivity extends AppCompatActivity {
     private Toast beforeExit;
     private SharedPreferences sharedPreferences;
     private CheckCode checkCode;
+    private GoogleSignInAccount mGoogleSignInAccount;
+    private final int RC_SIGN_IN = 1;
+
+    private int total_click = 0;
 
 
     private boolean backgroundChanged;
@@ -67,6 +86,11 @@ public class MainActivity extends AppCompatActivity {
             changeBackground(backgroundChanged);
         }
         scaleMessage(scaledUp, scaledDown);
+
+        if(mGoogleSignInAccount == null){
+            signIn();
+            Log.d(TAG, "Performed normal login");
+        }
     }
 
 
@@ -115,18 +139,32 @@ public class MainActivity extends AppCompatActivity {
      * part of the screen
      * @param view the view clicked
      */
-    //TODO improve all this code
     public void onClick(View view){
         String digit = (String) view.getTag();
         checkCode.addDigit(digit);
         counter++;
-        //total_click +=1 ;
+        total_click +=1;
+
+        if(mGoogleSignInAccount != null){
+            Games.getAchievementsClient(this, mGoogleSignInAccount).increment(getString(R.string.incremental), 1);
+        }
+
+
+        if(total_click == 6){
+            if(mGoogleSignInAccount != null){
+                Games.getAchievementsClient(this, mGoogleSignInAccount).unlock(getString(R.string.at_least_you_tried));
+            }
+        }
         
         if(counter == 6) {
             Actions guessed = checkCode.tryGuess();
             switch (guessed){
                 case CHANGE_COLOR:
                     changeBackground(!backgroundChanged);
+                    if(mGoogleSignInAccount != null){
+                        Games.getAchievementsClient(this, mGoogleSignInAccount)
+                                .unlock(getString(R.string.blackout));
+                    }
                     break;
 
                 case SCALE_DOWN:
@@ -134,9 +172,17 @@ public class MainActivity extends AppCompatActivity {
                     message.animate().scaleX(0.5f);
                     scaledUp = false;
                     scaledDown = true;
+                    if(mGoogleSignInAccount != null){
+                        Games.getAchievementsClient(this, mGoogleSignInAccount)
+                                .unlock(getString(R.string.small_pp));
+                    }
                     break;
 
                 case SCALE_UP:
+                    if(mGoogleSignInAccount != null){
+                        Games.getAchievementsClient(this, mGoogleSignInAccount)
+                                .unlock(getString(R.string.its_bigger));
+                    }
                     message.animate().scaleY(2);
                     message.animate().scaleX(2);
                     scaledUp = true;
@@ -144,10 +190,20 @@ public class MainActivity extends AppCompatActivity {
                     break;
 
                 case RETURN_NORMAL:
+                    if(mGoogleSignInAccount != null && (scaledDown || scaledUp)){
+                        Games.getAchievementsClient(this, mGoogleSignInAccount)
+                                .unlock(getString(R.string.normality));
+                    }
                     message.animate().scaleY(1);
                     message.animate().scaleX(1);
                     scaledUp = false;
                     scaledDown = false;
+                    break;
+
+                case SHOW_ACHIEVEMENTS:
+                    if(mGoogleSignInAccount != null){
+                        showAchievements();
+                    }
                     break;
             }
             vibration.vibrate(VIBRATION);
@@ -225,5 +281,52 @@ public class MainActivity extends AppCompatActivity {
             beforeExit.show();
         }
         firstBackPressed = System.currentTimeMillis();
+    }
+
+    /**
+     * Performs the sign in into a google account
+     */
+    void signIn(){
+        GoogleSignInClient mGoogleSignInClient = GoogleSignIn.getClient(this, GoogleSignInOptions.DEFAULT_GAMES_SIGN_IN);
+
+        //Performs the login into the google account
+        Intent signInIntent = mGoogleSignInClient.getSignInIntent();
+        startActivityForResult(signInIntent, RC_SIGN_IN);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if(requestCode == RC_SIGN_IN){
+            Task<GoogleSignInAccount> task =
+                    GoogleSignIn.getSignedInAccountFromIntent(data);
+            GoogleSignInResult result = Auth.GoogleSignInApi.getSignInResultFromIntent(data);
+            if (result.isSuccess()) {
+                // The signed in account is stored in the result.
+                Log.d(TAG, "Successfully connected with Google Play Services");
+                mGoogleSignInAccount = result.getSignInAccount();
+                GamesClient gamesClient = Games.getGamesClient(this, mGoogleSignInAccount);
+                gamesClient.setViewForPopups(findViewById(android.R.id.content));
+            } else {
+                Log.e(TAG, "Not connected with Google Play Services");
+                String message = result.getStatus().getStatusMessage();
+                if (message == null || message.isEmpty()) {
+                    message = "hai sbagliato";
+                }
+                new AlertDialog.Builder(this).setMessage(message)
+                        .setNeutralButton(android.R.string.ok, null).show();
+            }
+        }
+    }
+
+    private void showAchievements() {
+        Games.getAchievementsClient(this, mGoogleSignInAccount)
+                .getAchievementsIntent()
+                .addOnSuccessListener(new OnSuccessListener<Intent>() {
+                    @Override
+                    public void onSuccess(Intent intent) {
+                        startActivityForResult(intent, 2);
+                    }
+                });
     }
 }
